@@ -1,9 +1,13 @@
 package com.example.homework.notification.service;
 
+import com.example.homework.notification.LegacyNotificationEngine;
 import com.example.homework.notification.controller.NotificationResponseV1;
 import com.example.homework.notification.controller.RequestV1;
 import com.example.homework.notification.model.NotificationTransaction;
 import com.example.homework.notification.repository.NotificationTransactionRepository;
+import com.example.homework.notification.service.impl.EmailHandlerImpl;
+import com.example.homework.notification.service.impl.PushHandlerImpl;
+import com.example.homework.notification.service.impl.SmsHandlerImpl;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpStatusCodeException;
@@ -11,9 +15,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class NotificationControllerService {
@@ -29,6 +31,15 @@ public class NotificationControllerService {
         validateRequest(requestV1);
 
         NotificationTransaction newNotification = newNotification(requestV1);
+
+        NotificationHandlerService handler = getHandlerService(requestV1.type);
+        if (handler == null) {
+            System.out.println("LOGGING TO DB: Unknown type attempted -> " + requestV1.type);
+            newNotification.setStatus("U");
+            newNotification.setMessage(shorten("Unsupported type: " + requestV1.type));
+            notificationTransactionRepository.save(newNotification);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported type: " + requestV1.type);
+        }
 
         notificationTransactionRepository.save(newNotification);
 
@@ -105,5 +116,24 @@ public class NotificationControllerService {
         notificationResponseV1.updatedAt = notificationTransaction.getUpdatedAt();
 
         return notificationResponseV1;
+    }
+
+    private NotificationHandlerService getHandlerService (RequestV1.Types type) {
+        return switch (type) {
+            case SMS -> new SmsHandlerImpl();
+            case EMAIL -> new EmailHandlerImpl();
+            case POST -> new PushHandlerImpl();
+            default -> null;
+        };
+    }
+
+    private String shorten(String value) {
+        if (value == null) {
+            return null;
+        }
+        if (value.length() <= 255) {
+            return value;
+        }
+        return value.substring(0, 255);
     }
 }
