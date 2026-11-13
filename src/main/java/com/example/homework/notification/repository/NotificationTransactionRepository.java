@@ -6,7 +6,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface  NotificationTransactionRepository extends JpaRepository<NotificationTransaction, Long> {
 
@@ -15,5 +14,8 @@ public interface  NotificationTransactionRepository extends JpaRepository<Notifi
 
     @Query( "SELECT a FROM NotificationTransaction a ORDER BY a.id DESC LIMIT :limit")
     List<NotificationTransaction> getHistory(@Param("limit") int limit);
+
+    @Query( "SELECT count(a) FROM NotificationTransaction a")
+    Integer getDispatchCount();
 
 }
