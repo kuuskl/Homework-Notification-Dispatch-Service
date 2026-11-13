@@ -1,6 +1,5 @@
 package com.example.homework.notification.controller;
 
-import com.example.homework.notification.LegacyNotificationResponse;
 import com.example.homework.notification.service.NotificationControllerService;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,7 +27,7 @@ public class NotificationController {
 
     @GetMapping("/latest")
     public NotificationResponseV1 latest() {
-        return notificationControllerService.getlatest();
+        return notificationControllerService.getLatest();
     }
 
 }

@@ -1,6 +1,5 @@
 package com.example.homework.notification.service;
 
-import com.example.homework.notification.LegacyNotificationEngine;
 import com.example.homework.notification.controller.NotificationResponseV1;
 import com.example.homework.notification.controller.RequestV1;
 import com.example.homework.notification.model.NotificationTransaction;
@@ -10,8 +9,6 @@ import com.example.homework.notification.service.impl.PushHandlerImpl;
 import com.example.homework.notification.service.impl.SmsHandlerImpl;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpStatusCodeException;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.sql.Timestamp;
@@ -30,20 +27,37 @@ public class NotificationControllerService {
 
         validateRequest(requestV1);
 
-        NotificationTransaction newNotification = newNotification(requestV1);
+        Integer latestFailureCount = getLatestFailureCount();
+        NotificationTransaction newNotification = newNotification(requestV1, latestFailureCount);
+
+        if (latestFailureCount >= 3) {
+            newNotification.setStatus("R");
+            newNotification.setMessage(shorten("Circuit breaker OPEN via database state."));
+            notificationTransactionRepository.save(newNotification);
+            throw new RuntimeException("Circuit breaker OPEN via database state.");
+        }
 
         NotificationHandlerService handler = getHandlerService(requestV1.type);
         if (handler == null) {
-            System.out.println("LOGGING TO DB: Unknown type attempted -> " + requestV1.type);
             newNotification.setStatus("U");
             newNotification.setMessage(shorten("Unsupported type: " + requestV1.type));
             notificationTransactionRepository.save(newNotification);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported type: " + requestV1.type);
         }
 
-        notificationTransactionRepository.save(newNotification);
-
-        return toNotificationResponseV1(newNotification);
+        try {
+            handler.execute(requestV1.target, requestV1.payload);
+            newNotification.setStatus("S");
+            newNotification.setMessage("SENT");
+            notificationTransactionRepository.save(newNotification);
+            return toNotificationResponseV1(newNotification);
+        } catch (Exception e) {
+            newNotification.setStatus("E");
+            newNotification.setFailureCount(latestFailureCount+1);
+            shorten(e.getMessage());
+            notificationTransactionRepository.save(newNotification);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Inserted failure record for " + requestV1.target + ": " + e.getMessage());
+        }
     }
 
     public List<NotificationResponseV1> getHistory() {
@@ -54,7 +68,7 @@ public class NotificationControllerService {
         return notificationResponseV1List;
     }
 
-    public NotificationResponseV1 getlatest () {
+    public NotificationResponseV1 getLatest() {
         List<NotificationTransaction> notificationsHistory = notificationTransactionRepository.getHistory(1);
 
         if (notificationsHistory.isEmpty()) {
@@ -64,15 +78,25 @@ public class NotificationControllerService {
         }
     }
 
+    private Integer getLatestFailureCount() {
+        List<NotificationTransaction> notificationsHistory = notificationTransactionRepository.getHistory(1);
 
-    private NotificationTransaction newNotification(RequestV1 requestV1) {
+        if (notificationsHistory.isEmpty()) {
+            return 0;
+        } else {
+            return notificationsHistory.stream().findFirst().get().getFailureCount();
+        }
+    }
+
+
+    private NotificationTransaction newNotification(RequestV1 requestV1, Integer latestFailureCount) {
         NotificationTransaction newNotificationTransaction = new NotificationTransaction();
         newNotificationTransaction.setType(requestV1.type.toString());
         newNotificationTransaction.setTarget(requestV1.target);
         newNotificationTransaction.setPayload(requestV1.payload);
         newNotificationTransaction.setBlocked((requestV1.target != null && requestV1.target.toLowerCase().contains("blocked")) ? "Y" : "N" );
-        newNotificationTransaction.setFailureCount(0);
-        newNotificationTransaction.setDispatchCount(0);
+        newNotificationTransaction.setFailureCount(latestFailureCount);
+        newNotificationTransaction.setDispatchCount(notificationTransactionRepository.getDispatchCount() +1);
         newNotificationTransaction.setStatus("N");
         newNotificationTransaction.setMessage("START");
         newNotificationTransaction.setCreatedAt(new Timestamp(System.currentTimeMillis()));
