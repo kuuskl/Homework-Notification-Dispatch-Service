@@ -34,7 +34,7 @@ public class NotificationControllerService {
             newNotification.setStatus("R");
             newNotification.setMessage(shorten("Circuit breaker OPEN via database state."));
             notificationTransactionRepository.save(newNotification);
-            throw new RuntimeException("Circuit breaker OPEN via database state.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Circuit breaker OPEN via database state.");
         }
 
         NotificationHandlerService handler = getHandlerService(requestV1.type);
