@@ -32,8 +32,25 @@ public class NotificationControllerService {
 
         notificationTransactionRepository.save(newNotification);
 
-
         return toNotificationResponseV1(newNotification);
+    }
+
+    public List<NotificationResponseV1> getHistory() {
+        List<NotificationTransaction> notificationsHistory = notificationTransactionRepository.getHistory(20);
+        List<NotificationResponseV1> notificationResponseV1List = new ArrayList<>();
+        notificationsHistory.forEach(h -> notificationResponseV1List.add(toNotificationResponseV1(h)));
+
+        return notificationResponseV1List;
+    }
+
+    public NotificationResponseV1 getlatest () {
+        List<NotificationTransaction> notificationsHistory = notificationTransactionRepository.getHistory(1);
+
+        if (notificationsHistory.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No notification entries found.");
+        } else {
+            return toNotificationResponseV1(notificationsHistory.stream().findFirst().get());
+        }
     }
 
 
@@ -42,7 +59,7 @@ public class NotificationControllerService {
         newNotificationTransaction.setType(requestV1.type.toString());
         newNotificationTransaction.setTarget(requestV1.target);
         newNotificationTransaction.setPayload(requestV1.payload);
-        newNotificationTransaction.setBlocked( (requestV1.target != null && requestV1.target.toLowerCase().contains("blocked")) ? "Y" : "N" );
+        newNotificationTransaction.setBlocked((requestV1.target != null && requestV1.target.toLowerCase().contains("blocked")) ? "Y" : "N" );
         newNotificationTransaction.setFailureCount(0);
         newNotificationTransaction.setDispatchCount(0);
         newNotificationTransaction.setStatus("N");
@@ -53,8 +70,6 @@ public class NotificationControllerService {
         return newNotificationTransaction;
 
     }
-
-
 
     private void validateRequest(RequestV1 requestV1) {
         if (requestV1.target == null || requestV1.target.isEmpty()) {
@@ -71,9 +86,7 @@ public class NotificationControllerService {
         if (target != null && target.toLowerCase().contains("blocked")) {
             return true;
         }
-
         Integer recentCount = notificationTransactionRepository.findTargetRecentCount(target);
-
         return recentCount != null && recentCount >= 3;
     }
 
@@ -82,6 +95,14 @@ public class NotificationControllerService {
         notificationResponseV1.id = notificationTransaction.getId();
         notificationResponseV1.type = notificationTransaction.getType();
         notificationResponseV1.target = notificationTransaction.getTarget();
+        notificationResponseV1.payload = notificationTransaction.getPayload();
+        notificationResponseV1.status = notificationTransaction.getStatus();
+        notificationResponseV1.failureCount = notificationTransaction.getFailureCount();
+        notificationResponseV1.dispatchCount = notificationTransaction.getDispatchCount();
+        notificationResponseV1.blocked = notificationTransaction.getBlocked();
+        notificationResponseV1.message = notificationTransaction.getMessage();
+        notificationResponseV1.createdAt = notificationTransaction.getCreatedAt();
+        notificationResponseV1.updatedAt = notificationTransaction.getUpdatedAt();
 
         return notificationResponseV1;
     }
