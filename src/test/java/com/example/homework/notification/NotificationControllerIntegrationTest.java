@@ -3,98 +3,106 @@ package com.example.homework.notification;
 import com.example.homework.notification.controller.NotificationController;
 import com.example.homework.notification.controller.NotificationResponseV1;
 import com.example.homework.notification.controller.RequestV1;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Fail.fail;
 
-
-@RunWith(SpringJUnit4ClassRunner.class)
-@ContextConfiguration(locations = {"classpath:applicationContext.xml"})
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
+@SpringBootTest(classes = com.example.homework.notification.NotificationDispatchService.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@ActiveProfiles("test")
+@Transactional
 public class NotificationControllerIntegrationTest {
-
-    @Autowired
-    private LegacyNotificationEngine engine;
 
     @Autowired
     private NotificationController notificationController;
 
+
+
     @Test
     public void emailSuccessIsStoredAsSent() throws Exception {
         RequestV1 requestV1 = new RequestV1();
-        requestV1.type = RequestV1.Types.EMAIL;
+        requestV1.type = "EMAIL";
         requestV1.target = "buyer@example.com";
         requestV1.payload = "hello";
         NotificationResponseV1 response = notificationController.send(requestV1);
         assertThat(response.status).isEqualTo("S");
         assertThat(response.dispatchCount).isEqualTo(1);
         assertThat(response.failureCount).isZero();
-        assertThat(engine.getHistory()).hasSize(1);
+        assertThat(notificationController.history()).hasSize(1);
     }
 
     @Test
     public void blockedTargetFailsBeforeDispatchIsInserted() {
         RequestV1 requestV1 = new RequestV1();
-        requestV1.type = RequestV1.Types.SMS;
+        requestV1.type = "SMS";
         requestV1.target = "blocked-user@example.com";
         requestV1.payload = "hello";
         try {
             notificationController.send(requestV1);
             fail("Expected blocked target to fail");
-        /*} catch (ResponseStatusException ex) {
-            assertThat(ex.getMessage()).isEqualTo("Business Rule Violation: User is blacklisted or rate-limited by DB policy.");*/
+        } catch (ResponseStatusException ex) {
+            assertThat(ex.getMessage()).isEqualTo("400 BAD_REQUEST \"Business Rule Violation: User is blacklisted or rate-limited by DB policy.\"");
         } catch (Exception ex) {
             fail("Expected ResponseStatusException but got: " + ex.getClass().getName());
         }
 
-        assertThat(engine.getHistory()).isEmpty();
+        assertThat(notificationController.history()).isEmpty();
     }
 
-    /*@Test
+    @Test
     public void unsupportedTypeIsStoredAsUnknown() {
+        RequestV1 requestV1 = new RequestV1();
+        requestV1.type = "FAX";
+        requestV1.target = "ops@example.com";
+        requestV1.payload = "hello";
         try {
-            engine.processNotification("FAX", "ops@example.com", "hello");
+            notificationController.send(requestV1);
             fail("Expected unsupported type to fail");
         } catch (Exception ex) {
-            assertThat(ex.getMessage()).isEqualTo("Unsupported type: FAX");
+            assertThat(ex.getMessage()).isEqualTo("400 BAD_REQUEST \"Unsupported type: FAX\"");
         }
 
-        LegacyNotificationResponse latest = engine.getLatestState();
-        assertThat(latest.getStatus()).isEqualTo("U");
-        assertThat(latest.getMessage()).isEqualTo("Unsupported type: FAX");
+        NotificationResponseV1 latest = notificationController.latest();
+        assertThat(latest.status).isEqualTo("U");
+        assertThat(latest.message).isEqualTo("Unsupported type: FAX");
     }
 
     @Test
     public void threeFailuresOpenCircuitBreakerForNextAttempt() {
+        RequestV1 requestV1 = new RequestV1();
+        requestV1.type = "EMAIL";
+        requestV1.target = "error-user@example.com";
+        requestV1.payload = "hello";
         for (int i = 0; i < 3; i++) {
             try {
-                engine.processNotification("EMAIL", "error-user@example.com", "boom");
+                notificationController.send(requestV1);
                 fail("Expected email failure");
             } catch (RuntimeException ex) {
-                assertThat(ex.getMessage()).isEqualTo("SMTP Timeout");
+                assertThat(ex.getMessage()).isEqualTo("400 BAD_REQUEST \"Inserted failure record for error-user@example.com: SMTP Timeout\"");
             } catch (Exception ex) {
                 fail("Expected RuntimeException but got: " + ex.getClass().getName());
             }
         }
 
         try {
-            engine.processNotification("SMS", "ok-user@example.com", "hello");
+            requestV1.target = "ok-user@example.com";
+            notificationController.send(requestV1);
             fail("Expected circuit breaker to reject the request");
         } catch (RuntimeException ex) {
-            assertThat(ex.getMessage()).isEqualTo("Circuit breaker OPEN via database state.");
+            assertThat(ex.getMessage()).isEqualTo( "400 BAD_REQUEST \"Circuit breaker OPEN via database state.\"");
         } catch (Exception ex) {
             fail("Expected RuntimeException but got: " + ex.getClass().getName());
         }
 
-        LegacyNotificationResponse latest = engine.getLatestState();
-        assertThat(latest.getStatus()).isEqualTo("R");
-        assertThat(latest.getFailureCount()).isEqualTo(3);
-        assertThat(latest.getDispatchCount()).isEqualTo(4);
-    }*/
+        NotificationResponseV1 latest = notificationController.latest();
+        assertThat(latest.status).isEqualTo("R");
+        assertThat(latest.failureCount).isEqualTo(3);
+        assertThat(latest.dispatchCount).isEqualTo(4);
+    }
 }

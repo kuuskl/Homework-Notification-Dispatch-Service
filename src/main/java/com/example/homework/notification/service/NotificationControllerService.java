@@ -91,7 +91,7 @@ public class NotificationControllerService {
 
     private NotificationTransaction newNotification(RequestV1 requestV1, Integer latestFailureCount) {
         NotificationTransaction newNotificationTransaction = new NotificationTransaction();
-        newNotificationTransaction.setType(requestV1.type.toString());
+        newNotificationTransaction.setType(requestV1.type);
         newNotificationTransaction.setTarget(requestV1.target);
         newNotificationTransaction.setPayload(requestV1.payload);
         newNotificationTransaction.setBlocked((requestV1.target != null && requestV1.target.toLowerCase().contains("blocked")) ? "Y" : "N" );
@@ -142,11 +142,11 @@ public class NotificationControllerService {
         return notificationResponseV1;
     }
 
-    private NotificationHandlerService getHandlerService (RequestV1.Types type) {
+    private NotificationHandlerService getHandlerService (String type) {
         return switch (type) {
-            case SMS -> new SmsHandlerImpl();
-            case EMAIL -> new EmailHandlerImpl();
-            case POST -> new PushHandlerImpl();
+            case "SMS" -> new SmsHandlerImpl();
+            case "EMAIL" -> new EmailHandlerImpl();
+            case "POST" -> new PushHandlerImpl();
             default -> null;
         };
     }
