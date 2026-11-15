@@ -21,14 +21,9 @@ public class NotificationTransaction {
     private String blocked;
     private String message;
     private Timestamp createdAt;
-    private Timestamp updatedAt;
 
     public long getId() {
         return id;
-    }
-
-    public void setId(long id) {
-        this.id = id;
     }
 
     public String getType() {
@@ -103,11 +98,4 @@ public class NotificationTransaction {
         this.createdAt = createdAt;
     }
 
-    public Timestamp getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(Timestamp updatedAt) {
-        this.updatedAt = updatedAt;
-    }
 }

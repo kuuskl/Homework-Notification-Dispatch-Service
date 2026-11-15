@@ -14,5 +14,4 @@ public class NotificationResponseV1 {
     public String blocked;
     public String message;
     public Timestamp createdAt;
-    public Timestamp updatedAt;
 }
