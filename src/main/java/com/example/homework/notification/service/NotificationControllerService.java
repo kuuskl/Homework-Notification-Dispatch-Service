@@ -100,7 +100,6 @@ public class NotificationControllerService {
         newNotificationTransaction.setStatus("N");
         newNotificationTransaction.setMessage("START");
         newNotificationTransaction.setCreatedAt(new Timestamp(System.currentTimeMillis()));
-        newNotificationTransaction.setUpdatedAt(new Timestamp(System.currentTimeMillis()));
 
         return newNotificationTransaction;
 
@@ -137,7 +136,6 @@ public class NotificationControllerService {
         notificationResponseV1.blocked = notificationTransaction.getBlocked();
         notificationResponseV1.message = notificationTransaction.getMessage();
         notificationResponseV1.createdAt = notificationTransaction.getCreatedAt();
-        notificationResponseV1.updatedAt = notificationTransaction.getUpdatedAt();
 
         return notificationResponseV1;
     }

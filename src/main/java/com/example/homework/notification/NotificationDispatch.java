@@ -4,8 +4,8 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class NotificationDispatchService {
+public class NotificationDispatch {
     public static void main(String[] args) {
-        SpringApplication.run(NotificationDispatchService.class, args);
+        SpringApplication.run(NotificationDispatch.class, args);
     }
 }
