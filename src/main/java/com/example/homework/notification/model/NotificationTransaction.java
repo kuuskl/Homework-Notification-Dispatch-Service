@@ -1,6 +1,7 @@
 package com.example.homework.notification.model;
 
 import jakarta.persistence.*;
+import org.springframework.util.StringUtils;
 
 import java.sql.Timestamp;
 
@@ -11,6 +12,36 @@ import java.sql.Timestamp;
             @Index(name = "idx_notification_status", columnList="status")}
 )
 public class NotificationTransaction {
+
+    public enum Status {
+        NEW("N"),
+        SENT("S"),
+        ERR("E"),
+        UNKNOWN("U"),
+        REJECTED("R");
+
+        private final String code;
+
+        Status(String code) {
+            this.code = code;
+        }
+
+        public String getCode() {
+            return code;
+        }
+
+        public static Status valueOfCode(String code) {
+            if (StringUtils.isEmpty(code)) {
+                return null;
+            }
+            for (Status type : Status.values()) {
+                if (code.equalsIgnoreCase(type.getCode())) {
+                    return type;
+                }
+            }
+            throw new IllegalArgumentException("[" + code + "] is not a valid code for a NotificationTransaction.String");
+        }
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,7 +57,7 @@ public class NotificationTransaction {
     private String payload;
 
     @Column(name = "status", length = 1, nullable = false)
-    private String status;
+    private Status status;
 
     private int failureCount;
 
@@ -41,7 +72,7 @@ public class NotificationTransaction {
     @Column(nullable = false)
     private Timestamp createdAt;
 
-    @Column(nullable = false)
+    @Column(nullable = false, updatable=true)
     private Timestamp updatedAt;
 
     public long getId() {
@@ -72,11 +103,11 @@ public class NotificationTransaction {
         this.payload = payload;
     }
 
-    public String getStatus() {
+    public Status getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(Status status) {
         this.status = status;
     }
 
