@@ -37,7 +37,7 @@ public class NotificationControllerService {
         NotificationTransaction newNotification = newNotification(requestV1, latestFailureCount, isTargetBlacklisted);
 
         if (latestFailureCount >= 3) {
-            newNotification.setStatus("R");
+            newNotification.setStatus(NotificationTransaction.Status.REJECTED);
             newNotification.setMessage(shorten("Circuit breaker OPEN via database state."));
             notificationTransactionRepository.save(newNotification);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Circuit breaker OPEN via database state.");
@@ -45,7 +45,7 @@ public class NotificationControllerService {
 
         NotificationHandlerService handler = getHandlerService(requestV1.type);
         if (handler == null) {
-            newNotification.setStatus("U");
+            newNotification.setStatus(NotificationTransaction.Status.UNKNOWN);
             newNotification.setMessage(shorten("Unsupported type: " + requestV1.type));
             notificationTransactionRepository.save(newNotification);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported type: " + requestV1.type);
@@ -53,12 +53,12 @@ public class NotificationControllerService {
 
         try {
             handler.execute(requestV1.target, requestV1.payload);
-            newNotification.setStatus("S");
+            newNotification.setStatus(NotificationTransaction.Status.SENT);
             newNotification.setMessage("SENT");
             notificationTransactionRepository.save(newNotification);
             return toNotificationResponseV1(newNotification);
         } catch (Exception e) {
-            newNotification.setStatus("E");
+            newNotification.setStatus(NotificationTransaction.Status.ERR);
             newNotification.setFailureCount(latestFailureCount+1);
             shorten(e.getMessage());
             notificationTransactionRepository.save(newNotification);
@@ -119,7 +119,7 @@ public class NotificationControllerService {
         newNotificationTransaction.setBlocked(isTargetBlacklisted ? "Y" : "N" );
         newNotificationTransaction.setFailureCount(latestFailureCount);
         newNotificationTransaction.setDispatchCount(notificationTransactionRepository.getDispatchCount() +1);
-        newNotificationTransaction.setStatus("N");
+        newNotificationTransaction.setStatus(NotificationTransaction.Status.NEW);
         newNotificationTransaction.setMessage("START");
         newNotificationTransaction.setCreatedAt(new Timestamp(System.currentTimeMillis()));
         newNotificationTransaction.setUpdatedAt(new Timestamp(System.currentTimeMillis()));
@@ -155,7 +155,7 @@ public class NotificationControllerService {
         notificationResponseV1.type = notificationTransaction.getType();
         notificationResponseV1.target = notificationTransaction.getTarget();
         notificationResponseV1.payload = notificationTransaction.getPayload();
-        notificationResponseV1.status = notificationTransaction.getStatus();
+        notificationResponseV1.status = notificationTransaction.getStatus().name();
         notificationResponseV1.failureCount = notificationTransaction.getFailureCount();
         notificationResponseV1.dispatchCount = notificationTransaction.getDispatchCount();
         notificationResponseV1.blocked = notificationTransaction.getBlocked();

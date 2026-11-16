@@ -30,7 +30,7 @@ public class NotificationControllerIntegrationTest {
         requestV1.target = "buyer@example.com";
         requestV1.payload = "hello";
         NotificationResponseV1 response = notificationController.send(requestV1);
-        assertThat(response.status).isEqualTo("S");
+        assertThat(response.status).isEqualTo("SENT");
         assertThat(response.dispatchCount).isEqualTo(1);
         assertThat(response.failureCount).isZero();
         assertThat(notificationController.history()).hasSize(1);
@@ -68,7 +68,7 @@ public class NotificationControllerIntegrationTest {
         }
 
         NotificationResponseV1 latest = notificationController.latest();
-        assertThat(latest.status).isEqualTo("U");
+        assertThat(latest.status).isEqualTo("UNKNOWN");
         assertThat(latest.message).isEqualTo("Unsupported type: FAX");
     }
 
@@ -100,7 +100,7 @@ public class NotificationControllerIntegrationTest {
         }
 
         NotificationResponseV1 latest = notificationController.latest();
-        assertThat(latest.status).isEqualTo("R");
+        assertThat(latest.status).isEqualTo("REJECTED");
         assertThat(latest.failureCount).isEqualTo(3);
         assertThat(latest.dispatchCount).isEqualTo(4);
     }
@@ -112,7 +112,7 @@ public class NotificationControllerIntegrationTest {
         requestV1.target = "buyer@example.com";
         requestV1.payload = "hello";
         NotificationResponseV1 response = notificationController.send(requestV1);
-        assertThat(response.status).isEqualTo("S");
+        assertThat(response.status).isEqualTo("SENT");
         assertThat(response.dispatchCount).isEqualTo(1);
         assertThat(response.failureCount).isZero();
         assertThat(notificationController.history()).hasSize(1);
