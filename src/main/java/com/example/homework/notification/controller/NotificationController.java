@@ -1,6 +1,7 @@
 package com.example.homework.notification.controller;
 
 import com.example.homework.notification.service.NotificationControllerService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -30,4 +31,8 @@ public class NotificationController {
         return notificationControllerService.getLatest();
     }
 
+    @PutMapping("/update/{id}")
+    public ResponseEntity<NotificationResponseV1> update(@PathVariable Long id, @RequestBody RequestV1 request) {
+        return notificationControllerService.updateNotification(id, request);
+    }
 }

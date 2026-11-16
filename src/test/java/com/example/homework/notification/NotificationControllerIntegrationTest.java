@@ -104,4 +104,28 @@ public class NotificationControllerIntegrationTest {
         assertThat(latest.failureCount).isEqualTo(3);
         assertThat(latest.dispatchCount).isEqualTo(4);
     }
+
+    @Test
+    public void updateNotification() throws Exception {
+        RequestV1 requestV1 = new RequestV1();
+        requestV1.type = "EMAIL";
+        requestV1.target = "buyer@example.com";
+        requestV1.payload = "hello";
+        NotificationResponseV1 response = notificationController.send(requestV1);
+        assertThat(response.status).isEqualTo("S");
+        assertThat(response.dispatchCount).isEqualTo(1);
+        assertThat(response.failureCount).isZero();
+        assertThat(notificationController.history()).hasSize(1);
+
+        requestV1.type = "FAX";
+        requestV1.target = "new-buyer@example.com";
+        requestV1.payload = "new hello";
+        notificationController.update(response.id, requestV1);
+
+        NotificationResponseV1 latest = notificationController.latest();
+        assertThat(latest.payload).isEqualTo("new hello");
+        assertThat(latest.target).isEqualTo("buyer@example.com");
+        assertThat(latest.type).isEqualTo("EMAIL");
+
+    }
 }

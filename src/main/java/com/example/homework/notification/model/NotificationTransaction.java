@@ -5,22 +5,44 @@ import jakarta.persistence.*;
 import java.sql.Timestamp;
 
 @Entity
-@Table(name = "notification_transaction")
+@Table(name = "notification_transaction",
+        indexes = {
+            @Index(name = "idx_notification_target", columnList="target"),
+            @Index(name = "idx_notification_status", columnList="status")}
+)
 public class NotificationTransaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
+    @Column(name = "type", length = 32, nullable = false)
     private String type;
+
+    @Column(name = "target", length = 255, nullable = false)
     private String target;
+
+    @Column(name = "payload", columnDefinition = "CLOB")
     private String payload;
+
+    @Column(name = "status", length = 1, nullable = false)
     private String status;
+
     private int failureCount;
+
     private int dispatchCount;
+
+    @Column(name = "blocked", length = 1, nullable = false)
     private String blocked;
+
+    @Column(name = "message", length = 255)
     private String message;
+
+    @Column(nullable = false)
     private Timestamp createdAt;
+
+    @Column(nullable = false)
+    private Timestamp updatedAt;
 
     public long getId() {
         return id;
@@ -96,6 +118,14 @@ public class NotificationTransaction {
 
     public void setCreatedAt(Timestamp createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Timestamp getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Timestamp updatedAt) {
+        this.updatedAt = updatedAt;
     }
 
 }

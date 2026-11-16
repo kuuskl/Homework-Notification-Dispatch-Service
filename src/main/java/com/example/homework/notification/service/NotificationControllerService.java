@@ -9,6 +9,7 @@ import com.example.homework.notification.service.impl.EmailHandlerImpl;
 import com.example.homework.notification.service.impl.PushHandlerImpl;
 import com.example.homework.notification.service.impl.SmsHandlerImpl;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -83,6 +84,22 @@ public class NotificationControllerService {
         }
     }
 
+    public ResponseEntity<NotificationResponseV1> updateNotification (Long id, RequestV1 requestV1) {
+        NotificationTransaction notificationTransaction = notificationTransactionRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found: " + id));
+
+        if (requestV1.payload == null || requestV1.payload.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payload is mandatory.");
+        }
+
+        //Currently only allow payload update
+        notificationTransaction.setPayload(requestV1.payload);
+        notificationTransaction.setUpdatedAt(new Timestamp(System.currentTimeMillis()));
+
+        notificationTransactionRepository.save(notificationTransaction);
+        return ResponseEntity.ok(toNotificationResponseV1(notificationTransaction));
+    }
+
     private Integer getLatestFailureCount() {
         List<NotificationTransaction> notificationsHistory = notificationTransactionRepository.getHistory(1);
 
@@ -105,6 +122,7 @@ public class NotificationControllerService {
         newNotificationTransaction.setStatus("N");
         newNotificationTransaction.setMessage("START");
         newNotificationTransaction.setCreatedAt(new Timestamp(System.currentTimeMillis()));
+        newNotificationTransaction.setUpdatedAt(new Timestamp(System.currentTimeMillis()));
 
         return newNotificationTransaction;
 
@@ -143,6 +161,7 @@ public class NotificationControllerService {
         notificationResponseV1.blocked = notificationTransaction.getBlocked();
         notificationResponseV1.message = notificationTransaction.getMessage();
         notificationResponseV1.createdAt = notificationTransaction.getCreatedAt();
+        notificationResponseV1.updatedAt = notificationTransaction.getUpdatedAt();
 
         return notificationResponseV1;
     }

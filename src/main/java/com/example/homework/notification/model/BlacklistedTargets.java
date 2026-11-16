@@ -10,6 +10,7 @@ public class BlacklistedTargets {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
+    @Column(name = "target", length = 255, nullable = false)
     private String target;
 
     public long getId() {
