@@ -3,6 +3,7 @@ package com.example.homework.notification.service;
 import com.example.homework.notification.controller.NotificationResponseV1;
 import com.example.homework.notification.controller.RequestV1;
 import com.example.homework.notification.model.NotificationTransaction;
+import com.example.homework.notification.repository.BlacklistedTargetsRepository;
 import com.example.homework.notification.repository.NotificationTransactionRepository;
 import com.example.homework.notification.service.impl.EmailHandlerImpl;
 import com.example.homework.notification.service.impl.PushHandlerImpl;
@@ -19,16 +20,20 @@ public class NotificationControllerService {
 
     private final NotificationTransactionRepository notificationTransactionRepository;
 
-    public NotificationControllerService(NotificationTransactionRepository notificationTransactionRepository) {
+    private final BlacklistedTargetsRepository blacklistedTargetsRepository;
+
+    public NotificationControllerService(NotificationTransactionRepository notificationTransactionRepository, BlacklistedTargetsRepository blacklistedTargetsRepository) {
         this.notificationTransactionRepository = notificationTransactionRepository;
+        this.blacklistedTargetsRepository = blacklistedTargetsRepository;
     }
 
     public NotificationResponseV1 processNotification (RequestV1 requestV1) {
 
-        validateRequest(requestV1);
+        boolean isTargetBlacklisted = false;
+        validateRequest(requestV1, isTargetBlacklisted);
 
         Integer latestFailureCount = getLatestFailureCount();
-        NotificationTransaction newNotification = newNotification(requestV1, latestFailureCount);
+        NotificationTransaction newNotification = newNotification(requestV1, latestFailureCount, isTargetBlacklisted);
 
         if (latestFailureCount >= 3) {
             newNotification.setStatus("R");
@@ -89,12 +94,12 @@ public class NotificationControllerService {
     }
 
 
-    private NotificationTransaction newNotification(RequestV1 requestV1, Integer latestFailureCount) {
+    private NotificationTransaction newNotification(RequestV1 requestV1, Integer latestFailureCount, boolean isTargetBlacklisted) {
         NotificationTransaction newNotificationTransaction = new NotificationTransaction();
         newNotificationTransaction.setType(requestV1.type);
         newNotificationTransaction.setTarget(requestV1.target);
         newNotificationTransaction.setPayload(requestV1.payload);
-        newNotificationTransaction.setBlocked((requestV1.target != null && requestV1.target.toLowerCase().contains("blocked")) ? "Y" : "N" );
+        newNotificationTransaction.setBlocked(isTargetBlacklisted ? "Y" : "N" );
         newNotificationTransaction.setFailureCount(latestFailureCount);
         newNotificationTransaction.setDispatchCount(notificationTransactionRepository.getDispatchCount() +1);
         newNotificationTransaction.setStatus("N");
@@ -105,19 +110,21 @@ public class NotificationControllerService {
 
     }
 
-    private void validateRequest(RequestV1 requestV1) {
+    private void validateRequest(RequestV1 requestV1, boolean isTargetBlacklisted) {
         if (requestV1.target == null || requestV1.target.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Target is mandatory.");
         }
 
-        if (isTargetBlacklistedOrRateLimited(requestV1.target)) {
+        isTargetBlacklisted = !blacklistedTargetsRepository.isTargetBlacklisted(requestV1.target).isEmpty();
+
+        if (isTargetBlacklistedOrRateLimited(requestV1.target, isTargetBlacklisted)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Business Rule Violation: User is blacklisted or rate-limited by DB policy.");
         }
     }
 
 
-    private boolean isTargetBlacklistedOrRateLimited(String target) {
-        if (target != null && target.toLowerCase().contains("blocked")) {
+    private boolean isTargetBlacklistedOrRateLimited(String target, boolean isTargetBlacklisted) {
+        if (isTargetBlacklisted) {
             return true;
         }
         Integer recentCount = notificationTransactionRepository.findTargetRecentCount(target);
