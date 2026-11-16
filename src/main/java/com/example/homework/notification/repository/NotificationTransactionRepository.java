@@ -7,7 +7,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
-public interface  NotificationTransactionRepository extends JpaRepository<NotificationTransaction, Long> {
+public interface NotificationTransactionRepository extends JpaRepository<NotificationTransaction, Long> {
 
     @Query( "SELECT count(a) FROM NotificationTransaction a WHERE a.target = :target and a.createdAt >= DATEADD(MINUTE, -1, CURRENT_TIMESTAMP)")
     Integer findTargetRecentCount(@Param("target") String target);
